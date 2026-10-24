@@ -1,6 +1,13 @@
 // Ferramentas que o modelo pode chamar. Usado pelo navegador e pela função /api/token.
 
-import { Type, type FunctionDeclaration } from '@google/genai';
+import { Type, type FunctionDeclaration, type Tool } from '@google/genai';
+
+/**
+ * De onde vem a busca na internet:
+ * - "google": a Busca Google embutida no Gemini (usa a mesma GOOGLE_API_KEY);
+ * - "openrouter": a função web_search, via /api/search (precisa de OPENROUTER_API_KEY).
+ */
+export type SearchProvider = 'google' | 'openrouter';
 
 export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
@@ -35,3 +42,8 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
     parameters: { type: Type.OBJECT, properties: {} },
   },
 ];
+
+export function buildTools(search: SearchProvider): Tool[] {
+  const functionDeclarations = TOOL_DECLARATIONS.filter((tool) => search === 'openrouter' || tool.name !== 'web_search');
+  return search === 'google' ? [{ functionDeclarations }, { googleSearch: {} }] : [{ functionDeclarations }];
+}

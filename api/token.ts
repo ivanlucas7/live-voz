@@ -8,7 +8,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { buildLiveConfig, type SessionRequest } from '../src/shared/liveConfig.js';
-import { env, envNumber, geminiModel, isAuthorized, json, unauthorized } from './_lib/config.js';
+import { env, envNumber, geminiModel, isAuthorized, json, searchProvider, unauthorized } from './_lib/config.js';
 
 type TokenClient = Pick<GoogleGenAI, 'authTokens'>;
 
@@ -47,7 +47,7 @@ export async function POST(request: Request): Promise<Response> {
         expireTime: new Date(now + expireMinutes * 60_000).toISOString(),
         newSessionExpireTime: new Date(now + 60_000).toISOString(),
         // Sem lockAdditionalFields: a sessão usa exatamente esta configuração.
-        liveConnectConstraints: { model, config: buildLiveConfig(session, new Date(now)) },
+        liveConnectConstraints: { model, config: buildLiveConfig(session, searchProvider(), new Date(now)) },
         httpOptions: { apiVersion: 'v1alpha' },
       },
     });

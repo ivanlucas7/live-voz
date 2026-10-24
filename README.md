@@ -5,7 +5,7 @@ Conversa por voz em tempo real, em português, com o **Gemini Live** do Google, 
 - Resposta em cerca de meio segundo: o navegador fala direto com o Gemini, sem servidor no meio do áudio.
 - Dá para interromper a qualquer momento: a fala para na hora.
 - O rosto pisca, olha em volta e muda de cor conforme o momento: ouvindo, pensando, falando ou com erro.
-- Ferramentas: previsão do tempo (Open-Meteo, sem chave) e busca na internet (OpenRouter, opcional).
+- Ferramentas: previsão do tempo (Open-Meteo, sem chave) e busca na internet (Busca Google do próprio Gemini, com a mesma chave).
 - Diga "tchau" e ela se despede e encerra sozinha.
 - A conversa continua sem cortes depois do limite de 10 min por conexão do Gemini.
 - Transcrição da conversa e campo para digitar, se preferir.
@@ -19,7 +19,7 @@ Para ver só o rosto, sem chave nenhuma, abra o site com `?demo` no fim do ender
 Navegador (rosto + microfone + alto-falante)
   │ 1. pede um token          ┌──────────────────────────┐
   ├──────────────────────────▶│ Vercel: /api/token       │── usa a GOOGLE_API_KEY
-  │                           │         /api/search      │── usa a OPENROUTER_API_KEY
+  │                           │         /api/search      │── só se houver OPENROUTER_API_KEY
   │ 2. conversa por voz       └──────────────────────────┘
   └──────────────────────────▶ Gemini Live (WebSocket)
 ```
@@ -36,7 +36,7 @@ A Vercel não mantém WebSocket aberto. Então o navegador conecta direto no Gem
    |---|---|---|
    | `GOOGLE_API_KEY` | sim | Chave do Gemini |
    | `APP_PASSWORD` | recomendada | Senha que o app pede. Sem ela, qualquer pessoa com o link usa sua cota |
-   | `OPENROUTER_API_KEY` | não | Liga a busca na internet ([openrouter.ai/keys](https://openrouter.ai/keys)) |
+   | `OPENROUTER_API_KEY` | não | Troca a Busca Google embutida pela busca do OpenRouter ([openrouter.ai/keys](https://openrouter.ai/keys)). Sem ela, a busca usa o Google e funciona do mesmo jeito |
    | `OPENROUTER_MODEL` | não | Modelo da busca (padrão `openai/gpt-5.6-luna`) |
    | `GEMINI_MODEL` | não | Modelo de voz (padrão `gemini-3.1-flash-live-preview`) |
 
@@ -97,7 +97,7 @@ tests/                  Testes (Vitest)
 
 ## Limitações conhecidas
 
-- Enquanto uma ferramenta roda (principalmente a busca), o Gemini fica em silêncio. O rosto mostra que está pensando e aparece um aviso de "Buscando na internet…".
+- Enquanto uma ferramenta roda, o Gemini fica em silêncio. O rosto mostra que está pensando.
 - No iPhone, com o microfone ligado, o som pode sair mais baixo. É uma limitação do Safari com WebAudio.
 - O cancelamento de eco é o do próprio navegador. Em caixa de som alta, use fone se ela começar a se interromper sozinha.
 - Os modelos Live do Gemini ainda são "preview". Se o Google renomear o modelo, troque `GEMINI_MODEL` na Vercel.

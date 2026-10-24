@@ -6,6 +6,7 @@ import { GoogleGenAI, type LiveServerMessage, type Session } from '@google/genai
 import { AudioEngine } from '../audio/engine';
 import { base64ToFloat32, int16ToBase64, sampleRateFromMime } from '../audio/pcm';
 import type { Settings } from '../settings';
+import type { SearchProvider } from '../shared/declarations';
 import { buildLiveConfig } from '../shared/liveConfig';
 import { runTool } from '../tools';
 
@@ -37,7 +38,7 @@ export interface ConversationCallbacks {
 
 export interface ConversationOptions {
   settings: Settings;
-  searchEnabled: boolean;
+  searchProvider: SearchProvider;
   callbacks: ConversationCallbacks;
 }
 
@@ -175,7 +176,10 @@ export class Conversation {
 
     const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } });
     // A configuração que vale é a que foi no token; mandamos a mesma por coerência.
-    const config = buildLiveConfig({ ...this.options.settings, resumeHandle: this.resumeHandle });
+    const config = buildLiveConfig(
+      { ...this.options.settings, resumeHandle: this.resumeHandle },
+      this.options.searchProvider,
+    );
 
     const session = await ai.live.connect({
       model,
@@ -372,7 +376,7 @@ export class Conversation {
         const name = call.name ?? '';
         this.options.callbacks.onTool?.(name, 'running');
         const response = await runTool(call, {
-          searchEnabled: this.options.searchEnabled,
+          searchEnabled: this.options.searchProvider === 'openrouter',
           password: this.options.settings.password,
           onEndConversation: () => (this.endAfterReply = true),
         });

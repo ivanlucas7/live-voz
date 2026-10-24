@@ -25,7 +25,7 @@ describe('/api/health', () => {
       ok: true,
       model: 'gemini-3.1-flash-live-preview',
       hasGoogleKey: true,
-      searchEnabled: false,
+      searchProvider: 'google',
       passwordRequired: true,
     });
     expect(JSON.stringify(body)).not.toContain('segredo');
@@ -62,8 +62,20 @@ describe('/api/token', () => {
     expect(live.systemInstruction).toContain('Você é Bia');
     expect(live.systemInstruction).toContain('Fale rápido.');
     expect(live.sessionResumption).toEqual({ handle: 'h-1' });
-    expect(live.tools[0].functionDeclarations).toHaveLength(3);
+    // Sem OpenRouter: Busca Google embutida, sem a função web_search.
+    expect(live.tools[0].functionDeclarations.map((f: { name: string }) => f.name)).toEqual(['get_weather', 'end_conversation']);
+    expect(live.tools[1]).toEqual({ googleSearch: {} });
     expect(live.inputAudioTranscription).toEqual({});
+  });
+
+  it('com OPENROUTER_API_KEY usa a função web_search no lugar da Busca Google', async () => {
+    process.env.GOOGLE_API_KEY = 'k';
+    process.env.OPENROUTER_API_KEY = 'or';
+    await token(req('/api/token'));
+    const live = create.mock.calls[0][0].config.liveConnectConstraints.config;
+    expect(live.tools).toHaveLength(1);
+    expect(live.tools[0].functionDeclarations.map((f: { name: string }) => f.name)).toContain('web_search');
+    expect((await health().json()).searchProvider).toBe('openrouter');
   });
 
   it('usa padrões quando o corpo falta ou traz voz inválida', async () => {

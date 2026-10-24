@@ -20,6 +20,11 @@ export function geminiModel(): string {
   return env('GEMINI_MODEL', DEFAULT_MODEL);
 }
 
+/** Com chave do OpenRouter usa /api/search; sem ela, a Busca Google embutida no Gemini. */
+export function searchProvider(): 'google' | 'openrouter' {
+  return env('OPENROUTER_API_KEY') ? 'openrouter' : 'google';
+}
+
 export function passwordRequired(): boolean {
   return env('APP_PASSWORD') !== '';
 }

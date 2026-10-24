@@ -5,7 +5,7 @@
 // voz, prompt, ferramentas e retomada de sessão são definidos no servidor.
 
 import { Modality, type LiveConnectConfig } from '@google/genai';
-import { TOOL_DECLARATIONS } from './declarations.js';
+import { buildTools, type SearchProvider } from './declarations.js';
 import { buildSystemPrompt, DEFAULT_ASSISTANT_NAME, DEFAULT_VOICE, VOICE_IDS } from './prompt.js';
 
 export interface SessionRequest {
@@ -19,7 +19,11 @@ function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export function buildLiveConfig(request: SessionRequest, now = new Date()): LiveConnectConfig {
+export function buildLiveConfig(
+  request: SessionRequest,
+  search: SearchProvider = 'google',
+  now = new Date(),
+): LiveConnectConfig {
   const voice = typeof request.voice === 'string' && VOICE_IDS.includes(request.voice) ? request.voice : DEFAULT_VOICE;
   const resumeHandle = text(request.resumeHandle, 2000);
   return {
@@ -36,6 +40,6 @@ export function buildLiveConfig(request: SessionRequest, now = new Date()): Live
     outputAudioTranscription: {},
     contextWindowCompression: { slidingWindow: {} },
     sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
-    tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
+    tools: buildTools(search),
   };
 }
