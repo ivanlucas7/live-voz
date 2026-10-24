@@ -40,16 +40,42 @@ describe('/api/token', () => {
     setClientFactory(() => ({ authTokens: { create } }) as never);
   });
 
-  it('gera token de uso único travado no modelo', async () => {
+  it('gera token de uso único com o modelo e a configuração da sessão', async () => {
     process.env.GOOGLE_API_KEY = 'k';
     process.env.GEMINI_MODEL = 'modelo-x';
-    const res = await token(req('/api/token'));
+    const res = await token(
+      req('/api/token', {
+        body: JSON.stringify({ voice: 'Charon', name: 'Bia', extraInstructions: 'Fale rápido.', resumeHandle: 'h-1' }),
+      }),
+    );
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ token: 'auth_tokens/xyz', model: 'modelo-x' });
     const config = create.mock.calls[0][0].config;
     expect(config.uses).toBe(1);
-    expect(config.liveConnectConstraints).toEqual({ model: 'modelo-x' });
+    expect(config.lockAdditionalFields).toBeUndefined();
     expect(Date.parse(config.newSessionExpireTime)).toBeLessThan(Date.now() + 61_000);
+    const { model, config: live } = config.liveConnectConstraints;
+    expect(model).toBe('modelo-x');
+    // Sem isto o Gemini assume TEXT e recusa os modelos de voz.
+    expect(live.responseModalities).toEqual(['AUDIO']);
+    expect(live.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Charon');
+    expect(live.systemInstruction).toContain('Você é Bia');
+    expect(live.systemInstruction).toContain('Fale rápido.');
+    expect(live.sessionResumption).toEqual({ handle: 'h-1' });
+    expect(live.tools[0].functionDeclarations).toHaveLength(3);
+    expect(live.inputAudioTranscription).toEqual({});
+  });
+
+  it('usa padrões quando o corpo falta ou traz voz inválida', async () => {
+    process.env.GOOGLE_API_KEY = 'k';
+    await token(req('/api/token'));
+    await token(req('/api/token', { body: JSON.stringify({ voice: 'NaoExiste', resumeHandle: 42 }) }));
+    for (const [{ config }] of create.mock.calls) {
+      const live = config.liveConnectConstraints.config;
+      expect(live.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Aoede');
+      expect(live.systemInstruction).toContain('Você é Lia');
+      expect(live.sessionResumption).toEqual({});
+    }
   });
 
   it('exige a senha quando APP_PASSWORD está definida', async () => {
