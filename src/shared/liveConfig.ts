@@ -13,6 +13,8 @@ export interface SessionRequest {
   name?: unknown;
   extraInstructions?: unknown;
   resumeHandle?: unknown;
+  /** false desliga a busca na internet (usado quando o modelo recusa a Busca Google). */
+  search?: unknown;
 }
 
 function text(value: unknown, max: number): string {
@@ -40,6 +42,6 @@ export function buildLiveConfig(
     outputAudioTranscription: {},
     contextWindowCompression: { slidingWindow: {} },
     sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
-    tools: buildTools(search),
+    tools: buildTools(request.search === false ? 'none' : search),
   };
 }

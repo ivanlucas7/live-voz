@@ -111,7 +111,7 @@ describe('Conversation', () => {
     expect(String(config.systemInstruction)).toContain('Você é Lia');
     const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
     expect((init.headers as Record<string, string>)['x-app-password']).toBe('senha');
-    expect(JSON.parse(String(init.body))).toEqual({ voice: 'Kore', name: 'Lia', extraInstructions: '', resumeHandle: null });
+    expect(JSON.parse(String(init.body))).toEqual({ voice: 'Kore', name: 'Lia', extraInstructions: '', resumeHandle: null, search: true });
     expect(conversation.state).toBe('connecting');
     await conversation.stop();
   });
@@ -205,7 +205,7 @@ describe('Conversation', () => {
     expect(fetch).toHaveBeenCalledTimes(2); // um token novo por conexão
     msg({ setupComplete: {} });
     expect(conversation.state).toBe('listening');
-    expect(callbacks.onNotice).not.toHaveBeenCalled();
+    expect(callbacks.onNotice).toHaveBeenCalledWith('A conexão caiu (código 1006). Reconectando…');
     // eventos atrasados da conexão antiga são ignorados
     first.callbacks.onmessage({ serverContent: { interrupted: true } } as unknown as LiveServerMessage);
     expect(audio.cleared).toBe(0);
@@ -227,13 +227,47 @@ describe('Conversation', () => {
     await conversation.stop();
   });
 
-  it('para de tentar quando o Gemini recusa a configuração', async () => {
+  it('se a conexão cai antes de ficar pronta, tenta de novo sem a busca', async () => {
+    const { conversation, callbacks } = setup();
+    await conversation.start();
+    last().callbacks.onclose?.({ code: 1011, reason: 'Internal error' } as CloseEvent);
+    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+    const [, init] = vi.mocked(fetch).mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).search).toBe(false);
+    expect(callbacks.onNotice.mock.calls[0][0]).toContain('sem a busca');
+    msg({ setupComplete: {} });
+    expect(conversation.state).toBe('listening');
+    await conversation.stop();
+  });
+
+  it('para de tentar quando o Gemini recusa a configuração mesmo sem a busca', async () => {
     const { conversation, callbacks } = setup();
     await conversation.start();
     last().callbacks.onclose?.({ code: 1008, reason: 'modelo inválido' } as CloseEvent);
+    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+    last().callbacks.onclose?.({ code: 1008, reason: 'modelo inválido' } as CloseEvent);
     await vi.waitFor(() => expect(callbacks.onEnded).toHaveBeenCalledWith('error'));
     expect(callbacks.onError.mock.calls[0][0]).toContain('modelo inválido');
-    expect(sessions).toHaveLength(1);
+    expect(sessions).toHaveLength(2);
+  });
+
+  it('não fica preso em "reconectando" quando a conexão nova também cai', async () => {
+    vi.useFakeTimers();
+    try {
+      const { conversation, callbacks } = setup();
+      await conversation.start();
+      msg({ setupComplete: {} });
+      // Cada conexão nova cai antes de ficar pronta.
+      for (let i = 0; i < 6 && !callbacks.onEnded.mock.calls.length; i++) {
+        last().callbacks.onclose?.({ code: 1006, reason: '' } as CloseEvent);
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+      expect(callbacks.onEnded).toHaveBeenCalledWith('error');
+      expect(callbacks.onError.mock.calls[0][0]).toContain('Não consegui reconectar');
+      expect(conversation.state).toBe('error');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('encerra sozinho depois de se despedir', async () => {

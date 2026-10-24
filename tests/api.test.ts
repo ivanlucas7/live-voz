@@ -78,6 +78,14 @@ describe('/api/token', () => {
     expect((await health().json()).searchProvider).toBe('openrouter');
   });
 
+  it('search: false tira a busca do token', async () => {
+    process.env.GOOGLE_API_KEY = 'k';
+    await token(req('/api/token', { body: JSON.stringify({ search: false }) }));
+    const live = create.mock.calls[0][0].config.liveConnectConstraints.config;
+    expect(live.tools).toEqual([{ functionDeclarations: expect.any(Array) }]);
+    expect(live.tools[0].functionDeclarations.map((f: { name: string }) => f.name)).toEqual(['get_weather', 'end_conversation']);
+  });
+
   it('usa padrões quando o corpo falta ou traz voz inválida', async () => {
     process.env.GOOGLE_API_KEY = 'k';
     await token(req('/api/token'));
