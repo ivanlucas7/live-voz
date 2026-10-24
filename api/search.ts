@@ -58,6 +58,7 @@ export async function POST(request: Request): Promise<Response> {
     ? 'O usuário pediu um texto longo para ouvir. Entregue o texto completo pedido, sem resumir e sem comentários seus.'
     : 'Responda em no máximo 3 frases curtas, só com a informação pedida.';
 
+  const startedAt = Date.now();
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -68,7 +69,11 @@ export async function POST(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         model: env('OPENROUTER_MODEL', DEFAULT_SEARCH_MODEL),
-        plugins: [{ id: 'web' }],
+        // Menos páginas = menos texto para o modelo ler = resposta mais rápida.
+        plugins: [{ id: 'web', max_results: longform ? 5 : 3 }],
+        // Pouco raciocínio: para resumir uma busca em voz alta, velocidade vale mais.
+        // Modelos sem raciocínio ignoram este campo.
+        reasoning: { effort: longform ? 'medium' : 'low' },
         // Modelos de raciocínio gastam tokens antes da resposta; teto baixo devolve conteúdo vazio.
         max_tokens: longform ? 4000 : 800,
         messages: [
@@ -93,7 +98,9 @@ export async function POST(request: Request): Promise<Response> {
     if (!answer) return json({ error: 'A busca voltou sem resposta.' }, 502);
 
     cache.set(cacheKey, { answer, at: Date.now() });
-    return json({ answer });
+    const ms = Date.now() - startedAt;
+    console.log(`Busca em ${ms} ms: ${query.slice(0, 80)}`);
+    return json({ answer, ms });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === 'TimeoutError';
     return json({ error: timedOut ? 'A busca demorou demais.' : 'A busca falhou.' }, timedOut ? 504 : 502);

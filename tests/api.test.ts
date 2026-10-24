@@ -134,9 +134,10 @@ describe('/api/search', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const first = await search(req('/api/search', { body: body('Quem ganhou o jogo?') }));
-    expect(await first.json()).toEqual({ answer: 'O Brasil venceu por 2 a 1.' });
+    expect(await first.json()).toMatchObject({ answer: 'O Brasil venceu por 2 a 1.', ms: expect.any(Number) });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sent.plugins).toEqual([{ id: 'web' }]);
+    expect(sent.plugins).toEqual([{ id: 'web', max_results: 3 }]);
+    expect(sent.reasoning).toEqual({ effort: 'low' });
     expect(sent.messages[0].content).toContain('Hoje é');
 
     const second = await search(req('/api/search', { body: body('quem ganhou o jogo?') }));

@@ -37,7 +37,7 @@ A Vercel não mantém WebSocket aberto. Então o navegador conecta direto no Gem
    | `GOOGLE_API_KEY` | sim | Chave do Gemini |
    | `APP_PASSWORD` | recomendada | Senha que o app pede. Sem ela, qualquer pessoa com o link usa sua cota |
    | `OPENROUTER_API_KEY` | não | Troca a Busca Google embutida pela busca do OpenRouter ([openrouter.ai/keys](https://openrouter.ai/keys)). Sem ela, a busca usa o Google e funciona do mesmo jeito |
-   | `OPENROUTER_MODEL` | não | Modelo da busca (padrão `openai/gpt-5.6-luna`) |
+   | `OPENROUTER_MODEL` | não | Modelo da busca (padrão `openai/gpt-5.6-luna`). Um modelo menor e sem raciocínio responde mais rápido |
    | `GEMINI_MODEL` | não | Modelo de voz (padrão `gemini-3.1-flash-live-preview`) |
 
 4. Clique em **Deploy**. Em um minuto sai o endereço `https://live-voz-….vercel.app`.
