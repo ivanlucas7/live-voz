@@ -43,7 +43,7 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   },
 ];
 
-export function buildTools(search: SearchProvider): Tool[] {
+export function buildTools(search: SearchProvider | 'none'): Tool[] {
   const functionDeclarations = TOOL_DECLARATIONS.filter((tool) => search === 'openrouter' || tool.name !== 'web_search');
   return search === 'google' ? [{ functionDeclarations }, { googleSearch: {} }] : [{ functionDeclarations }];
 }

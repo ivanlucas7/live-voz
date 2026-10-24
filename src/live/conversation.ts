@@ -63,6 +63,7 @@ export class TokenError extends Error {
 export async function fetchToken(
   settings: Settings,
   resumeHandle: string | null,
+  search = true,
 ): Promise<{ token: string; model: string }> {
   const response = await fetch('/api/token', {
     method: 'POST',
@@ -72,6 +73,7 @@ export async function fetchToken(
       name: settings.name,
       extraInstructions: settings.extraInstructions,
       resumeHandle,
+      search,
     }),
   });
   const body = (await response.json().catch(() => ({}))) as { token?: string; model?: string; error?: string };
@@ -101,6 +103,9 @@ export class Conversation {
   private nextEntryId = 1;
   private userEntry: TranscriptUpdate | null = null;
   private aiEntry: TranscriptUpdate | null = null;
+  private failedAttempts = 0;
+  private lastCloseReason = '';
+  private searchOn = true;
 
   /** Já ouviu a pessoa e ainda não chegou áudio da resposta. */
   private get awaitingReply(): boolean {
@@ -171,13 +176,13 @@ export class Conversation {
   private async connect(): Promise<void> {
     const generation = ++this.generation;
     this.ready = false;
-    const { token, model } = await fetchToken(this.options.settings, this.resumeHandle);
+    const { token, model } = await fetchToken(this.options.settings, this.resumeHandle, this.searchOn);
     if (generation !== this.generation || this.stopped) return;
 
     const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } });
     // A configuração que vale é a que foi no token; mandamos a mesma por coerência.
     const config = buildLiveConfig(
-      { ...this.options.settings, resumeHandle: this.resumeHandle },
+      { ...this.options.settings, resumeHandle: this.resumeHandle, search: this.searchOn },
       this.options.searchProvider,
     );
 
@@ -207,12 +212,25 @@ export class Conversation {
 
   private onUnexpectedClose(event: CloseEvent): void {
     if (this.stopped) return;
-    console.warn('Conexão com o Gemini fechou', event.code, event.reason);
-    if (event.code === 1008 || event.code === 1007) {
-      // Erro de configuração (modelo, voz, token): tentar de novo não resolve.
-      this.fail(`O Gemini recusou a conexão: ${event.reason || `código ${event.code}`}`);
+    const reason = event.reason || `código ${event.code}`;
+    const beforeSetup = !this.ready;
+    console.warn('Conexão com o Gemini fechou', event.code, event.reason, { beforeSetup });
+
+    // A Busca Google embutida pode não ser aceita por todo modelo de voz.
+    // Se a conexão cai antes de ficar pronta (ou o erro cita a busca), tenta sem ela.
+    if (this.searchOn && (beforeSetup || /search|tool|grounding/i.test(event.reason))) {
+      this.searchOn = false;
+      this.options.callbacks.onNotice?.(`O Gemini fechou a conexão (${reason}). Tentando de novo sem a busca na internet.`);
+      void this.reconnect(true);
       return;
     }
+    if (event.code === 1008 || event.code === 1007) {
+      // Erro de configuração (modelo, voz, token): tentar de novo não resolve.
+      this.fail(`O Gemini recusou a conexão: ${reason}`);
+      return;
+    }
+    this.lastCloseReason = reason;
+    this.options.callbacks.onNotice?.(`A conexão caiu (${reason}). Reconectando…`);
     void this.reconnect();
   }
 
@@ -228,34 +246,46 @@ export class Conversation {
     void this.reconnect();
   }
 
-  private async reconnect(): Promise<void> {
-    if (this.stopped || this.phase === 'reconnecting') return;
+  /**
+   * Abre uma conexão nova (com o handle de retomada, se houver). Cada tentativa
+   * que cai antes do setup conta; depois de RETRY_DELAYS_MS.length falhas
+   * seguidas, desiste e mostra o motivo. O contador zera no setupComplete.
+   */
+  private async reconnect(resetAttempts = false): Promise<void> {
+    if (this.stopped) return;
+    if (resetAttempts) this.failedAttempts = 0;
+    if (this.failedAttempts > RETRY_DELAYS_MS.length) {
+      const why = this.lastCloseReason ? ` (${this.lastCloseReason})` : '';
+      this.fail(`Não consegui reconectar ao Gemini${why}. Toque no botão para tentar de novo.`);
+      return;
+    }
+    const delay = this.failedAttempts === 0 ? 0 : RETRY_DELAYS_MS[this.failedAttempts - 1];
+    this.failedAttempts++;
+
     this.phase = 'reconnecting';
     this.ready = false;
     const old = this.session;
     this.session = null;
-    this.generation++; // ignora eventos atrasados da conexão antiga
+    const generation = ++this.generation; // ignora eventos atrasados da conexão antiga
     try {
       old?.close();
     } catch {
       // já estava fechada
     }
+    if (delay) await sleep(delay);
+    if (this.stopped || generation !== this.generation) return;
 
-    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length && !this.stopped; attempt++) {
-      try {
-        await this.connect();
-        return; // phase vira "active" no setupComplete
-      } catch (error) {
-        if (error instanceof TokenError && error.status === 401) {
-          this.fail('Senha incorreta. Abra as configurações e confira a senha do app.');
-          return;
-        }
-        console.warn(`Reconexão falhou (tentativa ${attempt + 1})`, error);
-        if (attempt === RETRY_DELAYS_MS.length) break;
-        await sleep(RETRY_DELAYS_MS[attempt]);
+    try {
+      await this.connect(); // phase vira "active" no setupComplete
+    } catch (error) {
+      if (error instanceof TokenError && error.status === 401) {
+        this.fail('Senha incorreta. Abra as configurações e confira a senha do app.');
+        return;
       }
+      console.warn(`Reconexão falhou (tentativa ${this.failedAttempts})`, error);
+      this.lastCloseReason = error instanceof Error ? error.message : String(error);
+      if (!this.stopped) void this.reconnect();
     }
-    if (!this.stopped) this.fail('Perdi a conexão com o Gemini. Toque no botão para tentar de novo.');
   }
 
   private fail(message: string): void {
@@ -307,6 +337,7 @@ export class Conversation {
       const resumed = this.phase === 'reconnecting';
       this.phase = 'active';
       this.ready = true;
+      this.failedAttempts = 0;
       const queued = this.pending;
       this.pending = [];
       queued.forEach((chunk) => this.sendAudio(chunk));
