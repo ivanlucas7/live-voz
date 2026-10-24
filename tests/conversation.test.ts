@@ -109,7 +109,9 @@ describe('Conversation', () => {
     expect(config.inputAudioTranscription).toEqual({});
     expect(config.sessionResumption).toEqual({});
     expect(String(config.systemInstruction)).toContain('Você é Lia');
-    expect(fetch).toHaveBeenCalledWith('/api/token', expect.objectContaining({ headers: { 'x-app-password': 'senha' } }));
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['x-app-password']).toBe('senha');
+    expect(JSON.parse(String(init.body))).toEqual({ voice: 'Kore', name: 'Lia', extraInstructions: '', resumeHandle: null });
     expect(conversation.state).toBe('connecting');
     await conversation.stop();
   });
@@ -198,6 +200,8 @@ describe('Conversation', () => {
     await vi.waitFor(() => expect(sessions).toHaveLength(2));
     expect(conversation.state).toBe('reconnecting');
     expect(last().config.sessionResumption).toEqual({ handle: 'h-123' });
+    const [, init] = vi.mocked(fetch).mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).resumeHandle).toBe('h-123'); // o token novo leva o handle
     expect(fetch).toHaveBeenCalledTimes(2); // um token novo por conexão
     msg({ setupComplete: {} });
     expect(conversation.state).toBe('listening');

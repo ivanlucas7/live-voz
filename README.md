@@ -24,7 +24,7 @@ Navegador (rosto + microfone + alto-falante)
   └──────────────────────────▶ Gemini Live (WebSocket)
 ```
 
-A Vercel não mantém WebSocket aberto. Então o navegador conecta direto no Gemini com um **token temporário**, gerado a cada conversa pela função `/api/token`. A sua chave do Google fica só na Vercel. O token serve para abrir uma única conversa, só pode ser usado no primeiro minuto e expira em 30 minutos. Tudo isso é automático, você não precisa gerar nada.
+A Vercel não mantém WebSocket aberto. Então o navegador conecta direto no Gemini com um **token temporário**, gerado a cada conversa pela função `/api/token`. A sua chave do Google fica só na Vercel. O token já leva a configuração da conversa (voz, prompt e ferramentas), serve para abrir uma única conversa, só pode ser usado no primeiro minuto e expira em 30 minutos. Tudo isso é automático, você não precisa gerar nada.
 
 ## Colocar no ar na Vercel (uma vez só)
 

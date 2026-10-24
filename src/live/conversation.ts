@@ -2,17 +2,12 @@
 // as ferramentas, troca de conexão antes do limite de ~10 min sem perder o
 // contexto (session resumption) e se recupera de quedas de rede.
 
-import {
-  GoogleGenAI,
-  Modality,
-  type LiveConnectConfig,
-  type LiveServerMessage,
-  type Session,
-} from '@google/genai';
+import { GoogleGenAI, type LiveServerMessage, type Session } from '@google/genai';
 import { AudioEngine } from '../audio/engine';
 import { base64ToFloat32, int16ToBase64, sampleRateFromMime } from '../audio/pcm';
-import { buildSystemPrompt, type Settings } from '../settings';
-import { runTool, TOOL_DECLARATIONS } from '../tools';
+import type { Settings } from '../settings';
+import { buildLiveConfig } from '../shared/liveConfig';
+import { runTool } from '../tools';
 
 export type ConversationState =
   | 'idle'
@@ -64,10 +59,19 @@ export class TokenError extends Error {
   }
 }
 
-export async function fetchToken(password: string): Promise<{ token: string; model: string }> {
+export async function fetchToken(
+  settings: Settings,
+  resumeHandle: string | null,
+): Promise<{ token: string; model: string }> {
   const response = await fetch('/api/token', {
     method: 'POST',
-    headers: { 'x-app-password': password },
+    headers: { 'content-type': 'application/json', 'x-app-password': settings.password },
+    body: JSON.stringify({
+      voice: settings.voice,
+      name: settings.name,
+      extraInstructions: settings.extraInstructions,
+      resumeHandle,
+    }),
   });
   const body = (await response.json().catch(() => ({}))) as { token?: string; model?: string; error?: string };
   if (!response.ok || !body.token || !body.model) {
@@ -166,20 +170,12 @@ export class Conversation {
   private async connect(): Promise<void> {
     const generation = ++this.generation;
     this.ready = false;
-    const { token, model } = await fetchToken(this.options.settings.password);
+    const { token, model } = await fetchToken(this.options.settings, this.resumeHandle);
     if (generation !== this.generation || this.stopped) return;
 
     const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } });
-    const config: LiveConnectConfig = {
-      responseModalities: [Modality.AUDIO],
-      systemInstruction: buildSystemPrompt(this.options.settings),
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.options.settings.voice } } },
-      inputAudioTranscription: {},
-      outputAudioTranscription: {},
-      contextWindowCompression: { slidingWindow: {} },
-      sessionResumption: this.resumeHandle ? { handle: this.resumeHandle } : {},
-      tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-    };
+    // A configuração que vale é a que foi no token; mandamos a mesma por coerência.
+    const config = buildLiveConfig({ ...this.options.settings, resumeHandle: this.resumeHandle });
 
     const session = await ai.live.connect({
       model,
