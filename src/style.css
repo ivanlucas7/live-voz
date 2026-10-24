@@ -1,0 +1,384 @@
+:root {
+  --bg: #05070b;
+  --panel: #0c1119;
+  --panel-2: #121926;
+  --line: #1d2736;
+  --text: #e6edf6;
+  --muted: #8494a8;
+  --accent: #3ba5ff;
+  --accent-ink: #04111f;
+  --danger: #ff5a6a;
+  --radius: 18px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+body[data-state='user_speaking'] { --accent: #4cc9ff; }
+body[data-state='thinking'] { --accent: #8f7bff; }
+body[data-state='reconnecting'],
+body[data-state='connecting'] { --accent: #6b8fb3; }
+body[data-state='error'] { --accent: var(--danger); }
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select,
+textarea { font: inherit; color: inherit; }
+
+svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app {
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: 'top' 'stage' 'controls';
+  overflow: hidden;
+}
+
+/* ── Topo ─────────────────────────────────────────── */
+.topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+.brand { font-weight: 700; letter-spacing: 0.02em; }
+
+.status {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); background: var(--panel); }
+
+/* ── Rosto ────────────────────────────────────────── */
+.stage {
+  grid-area: stage;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 8px 16px;
+  min-height: 0;
+}
+
+.bezel {
+  position: relative;
+  width: min(100%, 860px);
+  height: 100%;
+  max-height: 640px;
+  min-height: 220px;
+  border-radius: clamp(28px, 6vw, 56px);
+  background: radial-gradient(120% 90% at 50% 40%, #0a0f17 0%, #020306 70%);
+  box-shadow:
+    0 0 0 clamp(6px, 1.2vw, 12px) #15181d,
+    0 0 0 calc(clamp(6px, 1.2vw, 12px) + 1px) #2a2f37,
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    inset 0 0 60px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+#face { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Grade de pixels, como numa tela LCD. */
+.pixels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 35%);
+}
+
+.chip {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(18, 25, 38, 0.92);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chip[hidden] { display: none; }
+.chip::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1s infinite;
+}
+.chip[data-status='error']::before { background: var(--danger); animation: none; }
+
+@keyframes blink { 50% { opacity: 0.25; } }
+
+/* ── Controles ────────────────────────────────────── */
+.controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 6vw, 40px);
+  padding: 12px 16px calc(18px + var(--safe-bottom));
+}
+
+.round {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+}
+.round:hover:not(:disabled) { color: var(--text); }
+.round:disabled { opacity: 0.35; cursor: default; }
+.round[aria-pressed='true'],
+.round[aria-expanded='true'] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+
+.talk {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent);
+  transition: background 0.3s, transform 0.1s;
+}
+.talk:active { transform: scale(0.96); }
+.talk svg { width: 32px; height: 32px; }
+.talk .stop { display: none; fill: currentColor; stroke: none; }
+.talk[aria-pressed='true'] { background: var(--panel-2); color: var(--text); border: 2px solid var(--accent); }
+.talk[aria-pressed='true'] .mic { display: none; }
+.talk[aria-pressed='true'] .stop { display: block; }
+.talk[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0.5;
+  animation: ring 2s ease-out infinite;
+}
+.talk:disabled { opacity: 0.6; cursor: progress; }
+
+@keyframes ring {
+  from { transform: scale(0.9); opacity: 0.6; }
+  to { transform: scale(1.25); opacity: 0; }
+}
+
+/* ── Transcrição ──────────────────────────────────── */
+.transcript {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  height: min(60dvh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(105%);
+  transition: transform 0.25s ease;
+  padding-bottom: var(--safe-bottom);
+}
+.transcript[data-open='true'] { transform: none; }
+
+.transcript-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 0 16px;
+}
+.transcript-head h2 { margin: 0; font-size: 1rem; }
+
+.messages {
+  flex: 1;
+  margin: 0;
+  padding: 8px 16px 16px;
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.messages .empty { color: var(--muted); text-align: center; margin-top: 24px; }
+
+.msg {
+  max-width: 85%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.msg.user { align-self: flex-end; background: var(--panel-2); border-bottom-right-radius: 4px; }
+.msg.ai { align-self: flex-start; background: #0f2236; border-bottom-left-radius: 4px; }
+.msg.partial { opacity: 0.7; font-style: italic; }
+.msg.interrupted::after { content: ' · interrompido'; color: var(--muted); font-size: 0.8em; font-style: normal; }
+
+.text-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+.text-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.text-form button {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.text-form :disabled { opacity: 0.4; cursor: default; }
+
+/* Telas largas: transcrição vira painel lateral. */
+@media (min-width: 1000px) {
+  .app[data-transcript='true'] {
+    grid-template-columns: 1fr 380px;
+    grid-template-areas: 'top top' 'stage side' 'controls side';
+  }
+  .transcript {
+    position: static;
+    grid-area: side;
+    height: auto;
+    transform: none;
+    display: none;
+    border-radius: 0;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    box-shadow: none;
+  }
+  .transcript[data-open='true'] { display: flex; }
+}
+
+/* Celular deitado: rosto menor e controles ao lado. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: 'top top' 'stage controls';
+  }
+  .controls { flex-direction: column; padding: 8px 16px; gap: 14px; }
+  .bezel { min-height: 0; }
+  .transcript { height: 85dvh; }
+}
+
+/* ── Configurações ────────────────────────────────── */
+.settings {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+}
+.settings::backdrop { background: rgba(0, 0, 0, 0.6); }
+.settings form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.settings h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.settings label { display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }
+.settings small { color: var(--muted); }
+.settings input,
+.settings select,
+.settings textarea {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  resize: vertical;
+}
+.settings .hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.settings .actions { display: flex; justify-content: flex-end; gap: 10px; }
+.settings .actions button { padding: 10px 18px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 600; }
+.settings .ghost { background: transparent; color: var(--muted); }
+.settings .primary { background: var(--accent); color: var(--accent-ink); }
+
+/* ── Aviso ────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-size: 0.92rem;
+}
+.toast[data-kind='error'] { border-color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .talk[aria-pressed='true']::after,
+  .chip::before { animation: none; }
+  .transcript { transition: none; }
+}

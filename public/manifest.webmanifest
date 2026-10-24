@@ -1,0 +1,10 @@
+{
+  "name": "Live Voz",
+  "short_name": "Live Voz",
+  "description": "Conversa por voz em tempo real, em português.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05070b",
+  "theme_color": "#05070b",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
