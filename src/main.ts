@@ -9,7 +9,7 @@ import { TOOL_LABELS } from './tools';
 interface Health {
   model: string;
   hasGoogleKey: boolean;
-  searchEnabled: boolean;
+  searchProvider: 'google' | 'openrouter';
   passwordRequired: boolean;
 }
 
@@ -40,7 +40,7 @@ const settingsDialog = $<HTMLDialogElement>('settings');
 const settingsForm = $<HTMLFormElement>('settingsForm');
 
 let settings: Settings = loadSettings();
-let health: Health = { model: '', hasGoogleKey: true, searchEnabled: false, passwordRequired: false };
+let health: Health = { model: '', hasGoogleKey: true, searchProvider: 'google', passwordRequired: false };
 let conversation: Conversation | null = null;
 let restingState: ConversationState = 'idle';
 let wakeLock: WakeLockSentinel | null = null;
@@ -86,7 +86,7 @@ async function startConversation(): Promise<void> {
   restingState = 'idle';
   const current = new Conversation({
     settings,
-    searchEnabled: health.searchEnabled,
+    searchProvider: health.searchProvider,
     callbacks: {
       onTranscript: renderTranscript,
       onTool: showTool,

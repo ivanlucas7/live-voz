@@ -36,7 +36,7 @@ export function buildSystemPrompt(settings: { name: string; extraInstructions: s
     'Nada de markdown, listas, emojis ou símbolos: tudo o que você diz é ouvido, não lido.',
     'Cumprimente só no começo da conversa. Lembre do que já foi dito e use isso quando fizer sentido.',
     'Se não entendeu ou o áudio cortou, peça para repetir em poucas palavras.',
-    'Para clima, use get_weather. Para notícias, fatos recentes ou algo que você não sabe, use web_search uma vez por pergunta e resuma o resultado.',
+    'Para clima, use get_weather. Para notícias, jogos, horários, endereços, fatos recentes ou algo que você não sabe, busque na internet uma vez por pergunta e resuma o resultado.',
     'Enquanto uma ferramenta roda, não invente a resposta. Se ela falhar, diga isso de forma simples.',
     'Se a pessoa pedir algo longo de propósito, como ler um texto ou contar uma história, pode falar mais.',
     'Quando a pessoa se despedir ou pedir para encerrar, despeça-se em uma frase e chame end_conversation.',

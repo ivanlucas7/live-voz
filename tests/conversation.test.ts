@@ -76,7 +76,7 @@ function setup(overrides: Partial<ConstructorParameters<typeof Conversation>[0]>
   const callbacks = { onTranscript: vi.fn(), onTool: vi.fn(), onError: vi.fn(), onEnded: vi.fn(), onNotice: vi.fn() };
   const conversation = new Conversation({
     settings: { voice: 'Kore', name: 'Lia', extraInstructions: '', password: 'senha' },
-    searchEnabled: false,
+    searchProvider: 'google',
     callbacks,
     ...overrides,
   });
