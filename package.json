@@ -1,0 +1,28 @@
+{
+  "name": "live-voz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Conversa por voz em tempo real em PT-BR com o Gemini Live e um rosto animado.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/genai": "2.31.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
